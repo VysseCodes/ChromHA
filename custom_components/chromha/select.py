@@ -8,9 +8,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
-    ACCENT_CUSTOM,
-    ACCENT_PRESETS,
-    CONF_ACCENT,
     CONF_ICON_DAYNIGHT,
     CONF_ICON_SET,
     CONF_MODE,
@@ -28,8 +25,6 @@ async def async_setup_entry(
 ) -> None:
     async_add_entities(
         [
-            ChromHASelect(entry, CONF_ACCENT, "Accent",
-                         [*ACCENT_PRESETS, ACCENT_CUSTOM], "mdi:palette"),
             ChromHASelect(entry, CONF_STYLE, "Style", STYLES, "mdi:layers-outline"),
             ChromHASelect(entry, CONF_MODE, "Mode", MODES, "mdi:theme-light-dark"),
             ChromHASelect(entry, CONF_ICON_SET, "Weather icons", ICON_SETS,

@@ -91,6 +91,17 @@ def adjust(value: str, *, lightness: float = 0.0, chromha: float = 1.0) -> str:
     return rgb_to_hex(oklab_to_rgb((big_l, a * chromha, b * chromha)))
 
 
+def with_lightness(value: str, lightness: float, chroma: float = 1.0) -> str:
+    """Set an absolute OKLab lightness, keeping the hue.
+
+    Used for text. Mixing toward a neutral washes the hue out almost
+    entirely; anchoring lightness and scaling chroma instead keeps the colour
+    recognisably the accent while landing where it needs to for contrast.
+    """
+    big_l, a, b = rgb_to_oklab(hex_to_rgb(value))
+    return rgb_to_hex(oklab_to_rgb((lightness, a * chroma, b * chroma)))
+
+
 def mix(a: str, b: str, weight: float) -> str:
     """Blend two colours in OKLab. weight=0 returns a, 1 returns b."""
     la = rgb_to_oklab(hex_to_rgb(a))
@@ -168,14 +179,17 @@ def build_palette(accent: str, *, dark: bool, contrast_boost: bool = False) -> P
         background = mix("#0c0d10", accent, 0.06)
         surface = mix("#191b20", accent, 0.07)
         surface_raised = mix("#232630", accent, 0.08)
-        text = mix("#e8e9ec", accent, 0.04)
+        # A light tint of the accent rather than plain white: high lightness,
+        # chroma pulled back to stay comfortable for long reading.
+        text = with_lightness(accent, 0.93, chroma=0.55)
         accent_soft = adjust(accent, lightness=+0.12, chromha=0.85)
         accent_strong = adjust(accent, lightness=-0.06, chromha=1.05)
     else:
         background = mix("#f4f5f7", accent, 0.05)
         surface = "#ffffff"
         surface_raised = mix("#ffffff", accent, 0.05)
-        text = mix("#22242a", accent, 0.05)
+        # The same idea inverted: a dark tint of the accent, not plain black.
+        text = with_lightness(accent, 0.28, chroma=0.60)
         accent_soft = adjust(accent, lightness=+0.15, chromha=0.7)
         accent_strong = adjust(accent, lightness=-0.10, chromha=1.05)
 

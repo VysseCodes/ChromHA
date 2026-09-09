@@ -1,21 +1,54 @@
-# Making every View Assist view pull from ChromHA
+# ChromHA + View Assist
 
-No entity ids, no palette sensor. Home Assistant themes are CSS custom
-properties, and custom properties inherit through the shadow DOM - so a
-button-card style can just say `var(--primary-text-color)` and the theme
-resolves it. button-card passes style values straight through to CSS.
+Three views written for ChromHA, and a script that converts View Assist's own
+views to follow the theme.
 
-The palette sensor exists for the cases CSS cannot reach: building a URL,
-doing maths on a colour, or anything else that happens in JavaScript. Colours
-are not one of those cases.
+```
+view-assist/
+├── convert.py                  converts your View Assist files
+├── dashboard-edits.md          the same dashboard edits, by hand
+└── views/
+    ├── chromhaclock/           clock with ChromHA weather icons
+    ├── chromhacontrols/        brightness, volume, VA modes
+    └── chromhasettings/        theme controls on the tablet
+```
 
-**Requirement:** the display's user profile must have a ChromHA theme selected.
+The `views/` layout matches View Assist's own, so those folders copy straight
+into `/config/view_assist/views/`.
+
+## Why View Assist's views are not included here
+
+View Assist is licensed **CC BY-NC 4.0**, which forbids commercial use.
+ChromHA is MIT, which permits it. Shipping converted copies of View Assist's
+views would put incompatible terms on the same repository, so this folder
+ships the converter instead and leaves the originals where they are.
+
+That is also the more durable arrangement: the script converts whichever View
+Assist version you actually have, rather than a snapshot that drifts out of
+date.
 
 ---
 
-## The variables to use
+## 0. Optional: push instead of pull
 
-| Use | CSS variable |
+Each ChromHA profile's options can list one or more View Assist devices to
+push to (**Push to View Assist**, off by default). When set, every rebuild
+calls `view_assist.set_state` on those devices, which lands
+`chromha_accent`, `chromha_background`, `chromha_surface`, `chromha_text`,
+`chromha_theme_name` and `chromha_transparent_url` on the device's own View
+Assist sensor - readable as `state_attr('sensor.<device>_view_assist',
+'chromha_accent')`, with no separate ChromHA sensor to name. The views below
+still work either way; this just gives you a second way to read the same
+data without the `var_profile` cross-reference in `chromhasettings.yaml`.
+
+## 1. Themes are CSS variables
+
+No entity ids, no palette sensor. Home Assistant themes are CSS custom
+properties, and custom properties inherit through the shadow DOM - so a
+button-card style can say `var(--primary-text-color)` and the theme resolves
+it. button-card passes style values straight through to CSS.
+
+| Use | Variable |
 |---|---|
 | Body and heading text | `var(--primary-text-color)` |
 | Dimmer secondary text | `var(--secondary-text-color)` |
@@ -25,24 +58,26 @@ are not one of those cases.
 | Inactive icons | `var(--state-icon-color)` |
 | Dividers | `var(--divider-color)` |
 
-Always give a fallback as the second argument - `var(--primary-text-color, white)` -
-so the view still renders if no theme is applied.
+Always give a fallback - `var(--primary-text-color, white)` - so a view still
+renders if no theme is applied.
 
----
+The palette sensor exists for what CSS cannot reach: Jinja templates and
+charting cards that hand colours to JavaScript. Not for this.
 
-## Step 0 - Turn off View Assist's background images
+## 2. Turn off View Assist's background images
 
-View Assist paints its own background image over every view, which wins over
-anything the theme does. It has no "none" option, so point it at ChromHA's
-transparent asset instead:
+View Assist paints its own image over every view, which beats anything the
+theme does. It has no "none" option - the choices are a default image, a local
+sequence, a local random pick, or an Unsplash download. So point it at
+ChromHA's transparent asset:
 
-Master Config -> **Background Image Source** -> *Default background*
-Master Config -> **Default Background** -> `/chromha_static/transparent.png`
+- Master Config -> **Background Image Source** -> *Default background*
+- Master Config -> **Default Background** -> `/chromha_static/transparent.png`
 
 `body_template` sets the background with the CSS `background:` shorthand,
-which resets `background-color` to transparent - so a transparent image leaves
-the button-card with no background at all, and the Lovelace background behind
-it (your theme) shows through.
+which resets `background-color` to transparent. A transparent image therefore
+leaves the button-card with no background at all, and the Lovelace background
+behind it - your theme - shows through.
 
 If the result is black rather than your theme colour, `lovelace-background` is
 not set. ChromHA only sets it for the Glass style, so either switch the
@@ -53,132 +88,104 @@ where a later declaration wins:
         - background-color: var(--primary-background-color)
 ```
 
----
+## 3. Convert the dashboard and views
 
-## Step 1 - Body text
+View Assist keeps these in two places, so there are two passes.
 
-`button_card_templates` lives at the *dashboard root*, not in a view file:
-View Assist dashboard, three-dot menu, **Raw configuration editor**. Back up
-that block before editing; `load_view` will not touch it, but a View Assist
-dashboard update can.
+**The dashboard** holds `button_card_templates` and a placeholder view.
+Everything inherits from those templates, so this pass does most of the work.
 
-In `body_template` -> `styles` -> `card`, find:
+Copy it out of the raw configuration editor (VA dashboard -> three-dot menu ->
+Raw configuration editor -> select all) into `dashboard.yaml`, then:
 
-```yaml
-        - color: white
+```bash
+python3 convert.py dashboard.yaml --report
+python3 convert.py dashboard.yaml -o dashboard-chromha.yaml
 ```
 
-Replace with:
+Paste the result back into the raw editor.
 
-```yaml
-        - color: var(--primary-text-color, white)
+Only three edits land there, and they are the ones that matter most since
+every view inherits them. If you would rather make them by hand, or want to
+check what the script did, see [dashboard-edits.md](dashboard-edits.md).
+
+**The views** are separate files:
+
+```bash
+python3 convert.py --views-dir /config/view_assist/views --report
+python3 convert.py --views-dir /config/view_assist/views --in-place
 ```
 
-That is the default text colour for every view.
+Then run `view_assist.load_view` for each one changed - editing a file does
+not update the running dashboard.
 
-## Step 2 - Status icons
+### Flags
 
-In `icon_template` -> `styles` -> `icon`:
+| Flag | Effect |
+|---|---|
+| `--report` | Summarise and write nothing |
+| `--in-place` | Rewrite each file, keeping a `.bak` |
+| `--all-yaml` | Include alternates: `advancedcamera`, `clockalt`, `list-nocheckbox`, `music-alternative`, community contributions |
+| `--theme-alert` | Also convert the Alert view |
 
-```yaml
-      icon:
-        - display: grid
-        - color: var(--primary-color, white)
-```
+The script is idempotent - a second run reports "nothing to change" - and it
+validates its output as YAML before writing. Unmatched patterns are reported,
+not guessed at, so a View Assist version it does not recognise produces a
+clear list rather than a silent partial conversion.
 
-Covers the status icons, the menu, and every `dynamic_*_item`.
+### What it changes
 
-## Step 3 - The background fallback
+- `body_template` text colour and `icon_template` icon colour
+- Defines `background_color`, activating a fallback branch that exists
+  upstream but was never given a value - it emitted `no-repeat undefined`,
+  which browsers discard
+- Literal card background colours, in any quoting style
+- The hardcoded `infobackground.png`, removing the variable and the style that
+  uses it **together** - removing only one leaves `url(undefined)`, which is
+  worse than leaving both
+- Literal white text and icons, including inside `card_mod`
 
-`body_template` already has a branch that paints `background_color` when no
-image is set, but nothing ever defined that variable - so it emitted
-`no-repeat undefined`, which the browser discards. Define it once in
-`variable_template` -> `variables`:
+### What it leaves alone
 
-```yaml
-      background_color: var(--lovelace-background, var(--primary-background-color, black))
-```
+- **`var_background`.** That is View Assist's rotating background feature and
+  keeps working. Only `variables.background` is removed.
+- **The Alert view.** Bright blue with black text is deliberate; it interrupts
+  rather than blends. `--theme-alert` overrides.
+- **`rgba()` shader overlays.** Different job.
+- Anything it does not recognise.
 
-One line, and every view that has no background image starts using the theme.
+## 4. Add the ChromHA views
 
----
-
-## Step 4 - Per-view overrides
-
-Steps 1-3 fix the defaults. These views set their own colours, which win.
-Each is in the view's `styles:` block.
-
-| View | Find | Replace with |
-|---|---|---|
-| Alarm | `background-color: '#24292c'` | `var(--primary-background-color)` |
-| Intent | `background-color: '#000000'` | `var(--primary-background-color)` |
-| Music | `background-color: black;` | `var(--primary-background-color)` |
-| Sports | `background-color: '#1c1c1c'` | `var(--primary-background-color)` |
-| Thermostat | `background-color: '#1c1c1c'` | `var(--primary-background-color)` |
-| Webpage | `background-color: '#00000'` | `var(--primary-background-color)` |
-| Locate | `background: black` | `var(--primary-background-color)` |
-
-The Webpage view's `'#00000'` is five digits. It is not a valid colour and
-never did anything.
-
-### Views with a hardcoded background image
-
-Info, Infopic and List each set:
+Copy the folders from `views/` into `/config/view_assist/views/`, then load
+each:
 
 ```yaml
-        variables:
-          background: /view_assist/dashboard/infobackground.png
+action: view_assist.load_view
+data:
+  name: chromhaclock
 ```
 
-and re-apply it in `styles: card:`. **Delete both** - the variable line and
-the `background:` / `background-size:` pair. The view then falls through to
-`body_template`, which now paints the theme background from Step 3.
+Each file has an edit marked at the top:
 
-Calendar and Camera reference `url(${variables.background})` without ever
-setting it, so they emit `url(undefined)`. Delete those `background:` lines
-too.
+| View | Edit |
+|---|---|
+| `chromhaclock` | none |
+| `chromhasettings` | `var_profile` - the slug in your ChromHA entity ids |
+| `chromhacontrols` | `var_brightness_entity`, `var_screen_entity` |
 
-### List view
+In `chromhacontrols`, rows are built in JavaScript rather than listed, so an
+entity left blank disappears instead of showing as unavailable.
 
-The todo colour is inside a `card_mod` string:
+Point the satellite's **Home screen** at `/view-assist/chromhaclock`, and add
+the other two to `status_icons` or `menu_items`:
 
 ```yaml
-                    ha-check-list-item {
-                      color: white;
+view:chromhacontrols|tune
+view:chromhasettings|palette
 ```
 
-card_mod cannot evaluate button-card `[[[ ]]]` templates - but it is plain CSS,
-so the variable works directly:
+## Credits
 
-```yaml
-                    ha-check-list-item {
-                      color: var(--primary-text-color);
-```
-
-The same applies to the Weather view's forecast rows and Locate's map markers.
-This is the reason to prefer CSS variables over the palette sensor: they work
-in both places, and button-card templates only work in one.
-
-### Alert view
-
-Hardcoded `#059bf1` with black text throughout. That is a deliberate high-
-visibility style - it is meant to interrupt rather than blend in. Leaving it
-alone is reasonable.
-
-### Weather view
-
-Uses `#059bf1` in `styles` and `#059bf9` again inside `card_mod`. Since it
-wraps the stock `weather-forecast` card, the cleanest fix is to delete the
-card_mod background lines entirely and let the theme style the card natively.
-
----
-
-## After editing
-
-Refresh the dashboard. Changes to `button_card_templates` apply on reload; no
-`load_view` call is needed, since these are not view files.
-
-If a view goes blank, a `[[[ ]]]` block is returning `undefined` for a CSS
-value and the browser is discarding the whole declaration. Plain
-`var(--...)` strings cannot fail that way, which is another reason to prefer
-them.
+View Assist by [dinki](https://github.com/dinki/View-Assist), CC BY-NC 4.0.
+The views in this folder are original work; `convert.py` modifies View Assist
+files in place on your own system and redistributes nothing.

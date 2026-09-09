@@ -27,13 +27,18 @@ STATIC_DIR: Final = "static"
 # default background at this file is the way to turn it off: the image still
 # loads, it just shows nothing, and the theme background shows through.
 TRANSPARENT_URL: Final = f"{STATIC_URL_BASE}/transparent.png"
+
+# The bundled Lovelace card, auto-registered so there is no resource for the
+# user to add by hand.
+CARD_URL: Final = f"{STATIC_URL_BASE}/chromha-card.js"
 ICON_DIR: Final = "icons"
 
 # --- Option keys -----------------------------------------------------------
 
 CONF_PROFILE_NAME: Final = "profile_name"
+# Stores a hex string like "#11ab93". Named `accent` since 0.3.0; the old
+# preset-name + accent_hex pair is migrated on load.
 CONF_ACCENT: Final = "accent"
-CONF_ACCENT_HEX: Final = "accent_hex"
 CONF_STYLE: Final = "style"
 CONF_MODE: Final = "mode"
 CONF_RADIUS: Final = "corner_radius"
@@ -41,12 +46,19 @@ CONF_OPACITY: Final = "card_opacity"
 CONF_ICON_SET: Final = "icon_set"
 CONF_ICON_DAYNIGHT: Final = "icon_daynight"
 CONF_CONTRAST: Final = "contrast_boost"
+# View Assist sensor entity ids to push this profile's palette to via
+# view_assist.set_state, on every rebuild. Empty (the default) means "do
+# nothing" - this is opt-in wiring, not a live entity, so it only exists in
+# the options flow.
+CONF_VIEW_ASSIST_TARGETS: Final = "view_assist_targets"
 
 # --- Choices ---------------------------------------------------------------
 
-ACCENT_CUSTOM: Final = "Custom"
+DEFAULT_ACCENT: Final = "#11ab93"
 
-ACCENT_PRESETS: Final[dict[str, str]] = {
+# Only used to migrate config entries created before 0.3.0, when the accent
+# was chosen from a dropdown instead of a colour picker.
+LEGACY_ACCENT_PRESETS: Final[dict[str, str]] = {
     "Rose": "#aa3151",
     "Purple": "#904eab",
     "Blue": "#009bb5",
@@ -95,8 +107,7 @@ DAYNIGHT_MODES: Final = [DAYNIGHT_OFF, DAYNIGHT_THEME, DAYNIGHT_SUN]
 # --- Defaults --------------------------------------------------------------
 
 DEFAULTS: Final[dict] = {
-    CONF_ACCENT: "Aqua",
-    CONF_ACCENT_HEX: "#11ab93",
+    CONF_ACCENT: DEFAULT_ACCENT,
     CONF_STYLE: STYLE_SOLID,
     CONF_MODE: MODE_AUTO,
     CONF_RADIUS: 12,
@@ -104,6 +115,7 @@ DEFAULTS: Final[dict] = {
     CONF_ICON_SET: ICON_SET_ANIMATED,
     CONF_ICON_DAYNIGHT: DAYNIGHT_THEME,
     CONF_CONTRAST: False,
+    CONF_VIEW_ASSIST_TARGETS: [],
 }
 
 # --- Weather icons ---------------------------------------------------------

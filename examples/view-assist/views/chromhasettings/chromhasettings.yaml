@@ -1,0 +1,92 @@
+# ---------------------------------------------------------------------------
+#  ChromHA theme settings - a View Assist view
+#
+#  Save as: /config/view_assist/views/chromhasettings/chromhasettings.yaml
+#  as-is - this file is the bare button-card View Assist's views directory
+#  expects. To paste it into a dashboard's raw config editor instead, wrap
+#  it back under `views: / - type: panel / title / path / cards:`.
+#
+#  ONE THING TO EDIT: var_profile, below. It is the slug in your ChromHA
+#  entity ids - for `select.chromha_ryan_style` the slug is `chromha_ryan`.
+#  Check Developer Tools > States and search for "chromha".
+#
+#  Every other entity id is derived from it, so there is one place to change.
+# ---------------------------------------------------------------------------
+
+type: custom:button-card
+variables:
+  settingsversion: 1.0.0
+
+  # <<< EDIT THIS >>>
+  var_profile: chromha_ryan
+
+  var_night: >-
+    [[[ try {
+      return hass.states[variables.var_assistsat_entity]
+        .attributes.mode === "night";
+    } catch { return false; } ]]]
+
+template:
+  - variable_template
+  - responsive_base
+  - body_template
+
+styles:
+  grid:
+    - grid-template-areas: |
+        "title status"
+        "message message"
+    - grid-template-rows: 12vh 1fr
+    - grid-template-columns: 1fr 1fr
+  card:
+    - background-color: var(--primary-background-color, black)
+    - background: none
+  custom_fields:
+    message:
+      - align-self: start
+      - justify-self: center
+      - width: 94%
+      - overflow-y: auto
+      - max-height: 84vh
+      - padding-top: 1vh
+
+custom_fields:
+  title: Theme
+  message:
+    card:
+      type: vertical-stack
+      cards:
+        # The bundled ChromHA card: colour wheel, hex field, and a
+        # preview strip of the derived palette.
+        - type: custom:chromha-card
+          entity: >-
+            [[[ return `text.${variables.var_profile}_accent` ]]]
+
+        - type: entities
+          title: Appearance
+          entities:
+            - entity: >-
+                [[[ return `select.${variables.var_profile}_style` ]]]
+              name: Style
+            - entity: >-
+                [[[ return `select.${variables.var_profile}_mode` ]]]
+              name: Light / dark
+            - entity: >-
+                [[[ return `number.${variables.var_profile}_corner_radius` ]]]
+              name: Corner radius
+            - entity: >-
+                [[[ return `number.${variables.var_profile}_card_opacity` ]]]
+              name: Card opacity
+            - entity: >-
+                [[[ return `switch.${variables.var_profile}_high_contrast_text` ]]]
+              name: High contrast text
+
+        - type: entities
+          title: Weather icons
+          entities:
+            - entity: >-
+                [[[ return `select.${variables.var_profile}_weather_icons` ]]]
+              name: Icon set
+            - entity: >-
+                [[[ return `select.${variables.var_profile}_icon_daynight` ]]]
+              name: Day / night

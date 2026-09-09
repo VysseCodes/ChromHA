@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import ACCENT_CUSTOM, CONF_ACCENT, CONF_ACCENT_HEX
+from .const import CONF_ACCENT
 from .entity import ChromHAEntity
 from .palette import hex_to_rgb
 
@@ -19,22 +19,22 @@ async def async_setup_entry(
 
 
 class ChromHAAccentHex(ChromHAEntity, TextEntity):
-    """Free-form hex entry, used when Accent is set to Custom."""
+    """The accent colour, as a hex string.
+
+    Deliberately a plain text entity. Home Assistant has no colour-picker
+    platform, and dressing this up as a light gave it a meaningless on/off
+    state. ChromHA ships its own Lovelace card instead, which writes here via
+    text.set_value.
+    """
 
     _attr_mode = TextMode.TEXT
     _attr_native_min = 4
     _attr_native_max = 7
     _attr_pattern = r"^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
-    _attr_icon = "mdi:eyedropper-variant"
+    _attr_icon = "mdi:palette"
 
     def __init__(self, entry: ConfigEntry) -> None:
-        super().__init__(entry, CONF_ACCENT_HEX, "Custom accent")
-
-    @property
-    def available(self) -> bool:
-        return self._entry.options.get(
-            CONF_ACCENT, self._entry.data.get(CONF_ACCENT)
-        ) == ACCENT_CUSTOM
+        super().__init__(entry, CONF_ACCENT, "Accent")
 
     @property
     def native_value(self) -> str | None:

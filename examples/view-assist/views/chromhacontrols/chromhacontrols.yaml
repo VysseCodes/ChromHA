@@ -1,0 +1,171 @@
+# ---------------------------------------------------------------------------
+#  ChromHA controls - a View Assist view
+#
+#  Save as: /config/view_assist/views/chromhacontrols/chromhacontrols.yaml
+#  as-is - this file is the bare button-card View Assist's views directory
+#  expects. To paste it into a dashboard's raw config editor instead, wrap
+#  it back under `views: / - type: panel / title / path / cards:`.
+#
+#  Brightness, volume, and the View Assist toggles for this satellite.
+#
+#  Most entities are read from the satellite itself, so there is nothing to
+#  edit for those. The two exceptions are marked <<< EDIT >>> below: screen
+#  brightness and screen power vary by device (VACA, Fully Kiosk, an ESPHome
+#  display) and View Assist does not expose them as attributes.
+#
+#  Leave one blank and its row disappears rather than showing as unavailable.
+# ---------------------------------------------------------------------------
+
+type: custom:button-card
+variables:
+  controlsversion: 1.0.0
+
+  # <<< EDIT >>> Screen brightness. A `number` or `light` entity.
+  # VACA exposes one per device; Fully Kiosk calls it screen_brightness.
+  var_brightness_entity: ''
+
+  # <<< EDIT >>> Screen power, usually a switch.
+  var_screen_entity: ''
+
+  # Read from the satellite - nothing to edit.
+  var_media: >-
+    [[[ try {
+      return hass.states[variables.var_assistsat_entity]
+        .attributes.mediaplayer_device || '';
+    } catch { return ''; } ]]]
+
+  var_music: >-
+    [[[ try {
+      return hass.states[variables.var_assistsat_entity]
+        .attributes.musicplayer_device || '';
+    } catch { return ''; } ]]]
+
+  var_mute: >-
+    [[[ try {
+      return hass.states[variables.var_assistsat_entity]
+        .attributes.mute_switch || '';
+    } catch { return ''; } ]]]
+
+  # Build the rows here rather than in the card, so an entity that is
+  # not configured is omitted entirely instead of rendering as
+  # "unavailable".
+  var_rows: |-
+    [[[
+      const rows = [];
+      const add = (id, name, icon) => {
+        if (id && hass.states[id]) rows.push({ entity: id, name, icon });
+      };
+      add(variables.var_brightness_entity, 'Screen brightness', 'mdi:brightness-6');
+      add(variables.var_screen_entity, 'Screen', 'mdi:monitor');
+      add(variables.var_media, 'Assistant volume', 'mdi:account-voice');
+      add(variables.var_music, 'Music', 'mdi:music');
+      add(variables.var_mute, 'Microphone mute', 'mdi:microphone-off');
+      return rows;
+    ]]]
+
+template:
+  - variable_template
+  - responsive_base
+  - body_template
+
+styles:
+  grid:
+    - grid-template-areas: |
+        "title status"
+        "message message"
+    - grid-template-rows: 12vh 1fr
+    - grid-template-columns: 1fr 1fr
+  card:
+    - background-color: var(--primary-background-color, black)
+    - background: none
+  custom_fields:
+    message:
+      - align-self: start
+      - justify-self: center
+      - width: 94%
+      - overflow-y: auto
+      - max-height: 84vh
+      - padding-top: 1vh
+
+custom_fields:
+  title: Controls
+  message:
+    card:
+      type: vertical-stack
+      cards:
+        - type: entities
+          title: This display
+          entities: '[[[ return variables.var_rows ]]]'
+
+        # View Assist's own modes. `set_state` is how View Assist
+        # expects these to be changed; there are no entities for them.
+        - type: grid
+          columns: 2
+          square: false
+          cards:
+            - type: button
+              name: Do not disturb
+              icon: mdi:minus-circle
+              tap_action:
+                action: call-service
+                service: view_assist.set_state
+                service_data:
+                  entity_id: >-
+                    [[[ return variables.var_assistsat_entity ]]]
+                  do_not_disturb: true
+            - type: button
+              name: Resume
+              icon: mdi:bell-outline
+              tap_action:
+                action: call-service
+                service: view_assist.set_state
+                service_data:
+                  entity_id: >-
+                    [[[ return variables.var_assistsat_entity ]]]
+                  do_not_disturb: false
+            - type: button
+              name: Hold view
+              icon: mdi:hand-back-left
+              tap_action:
+                action: call-service
+                service: view_assist.set_state
+                service_data:
+                  entity_id: >-
+                    [[[ return variables.var_assistsat_entity ]]]
+                  mode: hold
+            - type: button
+              name: Night mode
+              icon: mdi:weather-night
+              tap_action:
+                action: call-service
+                service: view_assist.set_state
+                service_data:
+                  entity_id: >-
+                    [[[ return variables.var_assistsat_entity ]]]
+                  mode: night
+
+        - type: grid
+          columns: 2
+          square: false
+          cards:
+            - type: button
+              name: Theme
+              icon: mdi:palette
+              tap_action:
+                action: call-service
+                service: view_assist.navigate
+                service_data:
+                  device: >-
+                    [[[ return variables.var_assistsat_entity ]]]
+                  path: >-
+                    [[[ return `${variables.var_dashboard}/chromhasettings` ]]]
+            - type: button
+              name: Home
+              icon: mdi:home
+              tap_action:
+                action: call-service
+                service: view_assist.navigate
+                service_data:
+                  device: >-
+                    [[[ return variables.var_assistsat_entity ]]]
+                  path: home

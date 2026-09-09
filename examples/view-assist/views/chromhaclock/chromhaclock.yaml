@@ -1,0 +1,223 @@
+# ---------------------------------------------------------------------------
+#  View Assist clock view, wired to ChromHA
+#
+#  Save as: /config/view_assist/views/chromhaclock/chromhaclock.yaml
+#  Load with:
+#      action: view_assist.load_view
+#      data:
+#        name: chromhaclock
+#
+#  Named "chromhaclock" so View Assist never overwrites it. Every customisation
+#  lives in this file's own `variables:` block, which overrides the shared
+#  button_card_templates - so nothing here depends on edits at the dashboard
+#  root, and a View Assist update cannot clobber it.
+#
+#  NO ENTITY IDS TO EDIT. Colours come from CSS theme variables, which button-
+#  card passes straight through and which inherit through the shadow DOM.
+#  Icons come from ChromHA's fixed endpoint, keyed by Home Assistant's own
+#  condition names. Nothing here needs to know your profile's sensor.
+#
+#  The only requirement is that the display's user profile has a ChromHA theme
+#  selected.
+# ---------------------------------------------------------------------------
+
+type: custom:button-card
+variables:
+  clockcardversion: 1.5.1-chromha
+
+  # Night mode is View Assist's own, unrelated to ChromHA's dark
+  # mode: red digits, everything else hidden.
+  var_night: >-
+    [[[ try {
+      return hass.states[variables.var_assistsat_entity]
+        .attributes.mode === "night";
+    } catch { return false; } ]]]
+
+  # --- Colours ------------------------------------------------------
+  # Plain CSS variables. button-card emits these as CSS, and custom
+  # properties inherit through the shadow DOM, so the theme resolves
+  # them with no entity lookup. The second value in each var() is the
+  # fallback used if no theme sets it.
+  var_font_color: >-
+    [[[ return variables.var_night
+      ? "red" : "var(--primary-text-color, white)" ]]]
+
+  var_font_color_night: >-
+    [[[ return variables.var_night
+      ? "transparent" : "var(--primary-text-color, white)" ]]]
+
+  var_bg_color: >-
+    [[[ return "var(--lovelace-background, var(--primary-background-color, black))" ]]]
+
+  # View Assist's background image, when one is set.
+  var_background: >-
+    [[[ try {
+      if (variables.var_night) return "";
+      return hass.states[variables.var_assistsat_entity]
+        .attributes.background || "";
+    } catch { return ""; } ]]]
+
+  # --- Weather icon -------------------------------------------------
+  # ChromHA serves /chromha_icons_auto/<condition>.svg using Home
+  # Assistant's own condition names, and resolves day or night artwork
+  # from sun.sun when the request arrives. So the URL is built straight
+  # from the weather state - no mapping table, no sensor, and nothing
+  # to rewrite at sunrise.
+  #
+  # This endpoint is registered whenever ChromHA is loaded, regardless
+  # of the profile's "Icon day/night" setting.
+  var_weather_svg: >-
+    [[[ try {
+      const cond = hass.states[
+        variables.var_assistsat_entity_weather_entity].state;
+      if (!cond || cond === "unknown" || cond === "unavailable") return "";
+      return `<img src="/chromha_icons_auto/${cond}.svg" ` +
+             `onerror="this.style.display='none'" ` +
+             `style="width:100%;height:100%;object-fit:contain;">`;
+    } catch { return ''; } ]]]
+
+template:
+  - variable_template
+  - responsive_base
+  - body_template
+
+styles:
+  grid:
+    - grid-template-areas: |
+        "title status"
+        "time time"
+        "date date"
+    - grid-template-rows: |-
+        [[[
+          if (window.viewAssistResponsive && window.viewAssistResponsive.orientation === "portrait") {
+            return "15vh 35vh 15vh";
+          } else {
+            return "15vh 50vh 15vh";
+          }
+        ]]]
+    - grid-template-columns: 1fr 1fr
+  card:
+    # Only emits url() when there is actually an image to show.
+    - background: >-
+        [[[ return variables.var_background
+          ? `center / cover no-repeat url(${variables.var_background})`
+          : variables.var_bg_color ]]]
+    - background-size: cover
+    - background-color: '[[[ return variables.var_bg_color ]]]'
+    - position: relative
+  custom_fields:
+    title:
+      - display: grid
+      - color: '[[[ return variables.var_font_color_night ]]]'
+    time:
+      - display: grid
+      - justify-self: center
+      - align-self: center
+      - z-index: 1
+      - font-size: |-
+          [[[
+            if (window.viewAssistResponsive && window.viewAssistResponsive.orientation === "portrait") {
+              return "25vh";
+            } else {
+              return "55vh";
+            }
+          ]]]
+      - font-weight: bold
+      - opacity: '[[[ return variables.var_night ? "35%" : "100%" ]]]'
+      - color: '[[[ return variables.var_font_color ]]]'
+      - padding-top: 0
+      - margin-top: 0
+    date:
+      - display: grid
+      - justify-self: center
+      - align-self: center
+      - z-index: 1
+      - font-size: |-
+          [[[
+            if (window.viewAssistResponsive && window.viewAssistResponsive.orientation === "portrait") {
+              return "8vh";
+            } else {
+              return "15vh";
+            }
+          ]]]
+      - width: max-content
+      - color: '[[[ return variables.var_font_color_night ]]]'
+    night:
+      - position: absolute
+      - top: 0
+      - min-height: 100%
+      - width: 100%
+      - overflow: hidden
+      - display: '[[[ return variables.var_night ? "block" : "none" ]]]'
+      - z-index: 2
+    shader:
+      # Only useful over a photographic background. With a flat
+      # ChromHA colour it just dims the theme, so it is disabled
+      # unless an image is actually set.
+      - position: absolute
+      - top: 0
+      - height: 100%
+      - width: 100%
+      - background-color: >-
+          [[[ return variables.var_background
+            ? "rgba(0,0,0,0.15)" : "transparent" ]]]
+
+custom_fields:
+  title:
+    card:
+      type: custom:button-card
+      show_icon: false
+      name: '[[[ return variables.var_weather_temperature ]]]'
+      custom_fields:
+        wicon: '[[[ return variables.var_weather_svg ]]]'
+      template: null
+      tap_action:
+        action: call-service
+        service: view_assist.navigate
+        service_data:
+          device: '[[[ return variables.var_assistsat_entity ]]]'
+          path: '[[[ return `${variables.var_dashboard}/weather` ]]]'
+      styles:
+        card:
+          - background-color: transparent
+          - border-width: 0px
+          - width: 100%
+          - top: '-5%'
+          - left: 5%
+        grid:
+          - grid-template-areas: '"wicon n"'
+        name:
+          - font-size: |-
+              [[[
+                if (window.viewAssistResponsive && window.viewAssistResponsive.orientation === "portrait") {
+                  return "10vh";
+                } else {
+                  return "15vh";
+                }
+              ]]]
+          - color: '[[[ return variables.var_font_color_night ]]]'
+        custom_fields:
+          wicon:
+            - align-self: center
+            - justify-self: center
+            - opacity: '[[[ return variables.var_night ? "0" : "1" ]]]'
+            - width: |-
+                [[[
+                  if (window.viewAssistResponsive && window.viewAssistResponsive.orientation === "portrait") {
+                    return "10vh";
+                  } else {
+                    return "13vh";
+                  }
+                ]]]
+            - height: |-
+                [[[
+                  if (window.viewAssistResponsive && window.viewAssistResponsive.orientation === "portrait") {
+                    return "10vh";
+                  } else {
+                    return "13vh";
+                  }
+                ]]]
+  time: '[[[ return variables.var_current_time ]]]'
+  date: '[[[ return variables.var_date_short ]]]'
+  night: ''
+  shader: ''

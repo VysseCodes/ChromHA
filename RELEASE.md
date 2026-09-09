@@ -6,7 +6,7 @@
 are about to create, without the `v`. The release workflow fails the release
 if they disagree, because HACS serves whatever the manifest says.
 
-The manifest is currently `0.2.1`, so the next tag is `v0.2.1`.
+The manifest is currently `0.3.0`, so the next tag is `v0.3.0`.
 
 ## 2. Update the changelog
 
@@ -17,19 +17,19 @@ date, and add the link reference at the bottom.
 
 ```bash
 git add -A
-git commit -m "Release v0.2.1"
+git commit -m "Release v0.3.0"
 git push origin main
 
-git tag -a v0.2.1 -m "ChromHA v0.2.1"
-git push origin v0.2.1
+git tag -a v0.3.0 -m "ChromHA v0.3.0"
+git push origin v0.3.0
 ```
 
 ## 4. Publish the release
 
 A tag alone is not enough - HACS reads GitHub *releases*.
 
-GitHub -> Releases -> Draft a new release -> choose tag `v0.2.1` ->
-title `v0.2.1` -> paste the changelog section as the body -> Publish.
+GitHub -> Releases -> Draft a new release -> choose tag `v0.3.0` ->
+title `v0.3.0` -> paste the changelog section as the body -> Publish.
 
 ## 5. Verify
 

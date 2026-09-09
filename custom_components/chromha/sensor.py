@@ -16,6 +16,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.const import EntityCategory
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -54,9 +55,21 @@ async def async_setup_entry(
 
 
 class ChromHAPaletteSensor(ChromHAEntity, SensorEntity):
-    """Resolved colours for the current settings."""
+    """Resolved colours for the current settings.
+
+    Not needed for theming - Home Assistant themes are CSS custom properties,
+    so `var(--primary-text-color)` works directly in button-card styles and in
+    card_mod. This exists for the places CSS cannot reach: Jinja templates
+    (automations, notifications, matching an LED strip to the accent) and
+    charting cards that pass colours into a JavaScript library rather than
+    emitting CSS.
+
+    Diagnostic, so it sits apart from the controls rather than looking like
+    one of them.
+    """
 
     _attr_icon = "mdi:palette-swatch-variant"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, entry: ConfigEntry) -> None:
         super().__init__(entry, "palette", "Palette")

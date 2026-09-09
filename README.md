@@ -22,8 +22,7 @@ theme once in their profile and tunes it independently after that.
 
 | Entity | What it does |
 |---|---|
-| `select.*_accent` | 10 presets, or Custom |
-| `text.*_custom_accent` | Hex value, when Accent is Custom |
+| `text.*_accent` | Accent colour as hex; pair it with the ChromHA card |
 | `select.*_style` | Solid or Glass |
 | `select.*_mode` | Light, Dark, Auto (follows the client), or Sun |
 | `number.*_corner_radius` | 0–32px |
@@ -31,11 +30,39 @@ theme once in their profile and tunes it independently after that.
 | `select.*_weather_icons` | Animated or None |
 | `select.*_icon_daynight` | Day only, Follow theme, or Follow sun |
 | `switch.*_high_contrast_text` | WCAG AA → AAA target |
-| `sensor.*_palette` | Every resolved colour, as attributes |
+| `sensor.*_palette` | Every resolved colour, as attributes (diagnostic) |
+
+## Picking the accent
+
+Home Assistant has no colour-picker entity platform - `text` is a text box,
+`select` a dropdown, `number` a slider. Presenting the accent as a light does
+get you the colour wheel, but it also gets you a meaningless on/off state.
+
+So the accent stays a plain `text` entity and ChromHA ships its own card:
+
+```yaml
+type: custom:chromha-card
+entity: text.chromha_ryan_accent
+```
+
+The card registers itself as a frontend module, so there is no Lovelace
+resource to add - it appears in the card picker after a restart. With no
+`entity` set it finds the accent entity on its own. Underneath the picker it
+shows the derived palette, so you can see what a colour produces before
+committing to it.
+
+The **Configure** dialog on the config entry offers the same picker if you
+would rather not put a card on a dashboard.
 
 ## The palette sensor
 
-This is the part worth knowing about. Themes are CSS, and CSS variables can be
+You do not need this for theming. Home Assistant themes are CSS custom
+properties, so `var(--primary-text-color)` works directly in a button-card
+style or a card_mod block, with no entity involved.
+
+It exists for the places CSS cannot reach: Jinja templates - automations,
+notifications, matching an LED strip to your accent - and charting cards that
+hand colours to a JavaScript library rather than emitting CSS. Themes are CSS, and CSS variables can be
 awkward to reach from inside custom cards. The sensor publishes the same
 colours as plain data:
 
@@ -72,15 +99,36 @@ No card-mod, no cascade guessing, no shadow DOM surprises. Useful for wall
 tablets and kiosk dashboards where cards often sit outside the normal theme
 inheritance.
 
+## Reaching View Assist and Music Assistant
+
+Neither has a theming API to register with, so ChromHA reaches them two
+different ways:
+
+- **View Assist**: on every rebuild, ChromHA can call `view_assist.set_state`
+  on any View Assist device(s) you pick in a profile's options (**Push to
+  View Assist**, optional and off by default). That service merges arbitrary
+  attributes into the target's own sensor, so a View Assist dashboard reads
+  `chromha_accent`, `chromha_background`, `chromha_surface`, `chromha_text`,
+  `chromha_theme_name` and friends straight off its own entity - no separate
+  ChromHA sensor to name. See [examples/view-assist](examples/view-assist)
+  for ready-made views and the dashboard edits View Assist itself still
+  needs.
+- **Music Assistant**: it has no public API to push a theme into, so this
+  stays pull-based. Point any Music Assistant-adjacent automation, script, or
+  custom card at `sensor.*_palette`'s attributes, the same way a Jinja
+  template or charting card would.
+
 ## Colour derivation
 
 All maths happens in OKLab so perceived lightness stays steady as hue changes.
 
 - Neutrals are tinted slightly toward the accent, so the interface reads as
   one scheme rather than an accent floating on grey.
-- Text is checked against the card background and darkened or lightened until
-  it clears **4.5:1** (or **7:1** with high contrast on). Every built-in preset
-  passes in both light and dark.
+- Text is a tint of the accent, not white or black: the accent's own hue at a
+  fixed lightness with chroma pulled back. A rose accent gives warm off-white
+  text on a dark theme; a blue accent gives cool.
+- Text is then checked against the card background and adjusted until it
+  clears **4.5:1** (or **7:1** with high contrast on).
 - Glass backgrounds are generated gradients derived from the accent. No image
   files, and the backdrop follows whatever colour you pick.
 
@@ -275,9 +323,16 @@ The URL is also on the palette sensor as `transparent_url`.
 
 ## Examples
 
-`examples/view-assist/` contains a View Assist clock view wired to ChromHA,
-and a guide to making the remaining View Assist views follow the theme. Both
-use plain CSS variables and need no entity ids.
+`examples/view-assist/` contains three views written for ChromHA - a clock, a
+theme settings page, and device controls - laid out to copy straight into
+`/config/view_assist/views/`.
+
+Alongside them, `convert.py` converts View Assist's own dashboard and views to
+follow the theme: it is idempotent, validates its output, and reports anything
+it does not recognise rather than guessing.
+
+View Assist's views are not redistributed here. View Assist is CC BY-NC 4.0
+and ChromHA is MIT, so the script converts your own copies in place instead.
 
 ## Brand assets
 

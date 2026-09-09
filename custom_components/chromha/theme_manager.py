@@ -9,36 +9,37 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.debounce import Debouncer
 
 from .const import (
-    ACCENT_CUSTOM,
-    ACCENT_PRESETS,
     CONF_ACCENT,
-    CONF_ACCENT_HEX,
+    CONF_CONTRAST,
+    CONF_MODE,
     CONF_PROFILE_NAME,
+    CONF_VIEW_ASSIST_TARGETS,
+    DEFAULT_ACCENT,
     DEFAULTS,
     DOMAIN,
+    MODE_DARK,
+    MODE_LIGHT,
+    MODE_SUN,
     REBUILD_DEBOUNCE,
     SUN_ENTITY,
     THEME_DIR,
     THEME_FILE,
+    TRANSPARENT_URL,
 )
-from .palette import hex_to_rgb, rgb_to_hex
+from .palette import build_palette, hex_to_rgb, rgb_to_hex
 from .renderer import render_file
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def resolve_accent(options: dict) -> str:
-    """Work out the accent hex from the preset/custom selection."""
-    choice = options.get(CONF_ACCENT, DEFAULTS[CONF_ACCENT])
-    if choice == ACCENT_CUSTOM:
-        raw = options.get(CONF_ACCENT_HEX) or DEFAULTS[CONF_ACCENT_HEX]
-    else:
-        raw = ACCENT_PRESETS.get(choice, DEFAULTS[CONF_ACCENT_HEX])
+    """Normalise the stored accent to a #rrggbb string."""
+    raw = options.get(CONF_ACCENT) or DEFAULT_ACCENT
     try:
         return rgb_to_hex(hex_to_rgb(raw))
     except ValueError:
         _LOGGER.warning("Invalid accent colour %r, falling back to default", raw)
-        return DEFAULTS[CONF_ACCENT_HEX]
+        return DEFAULT_ACCENT
 
 
 class ThemeManager:
@@ -109,6 +110,7 @@ class ThemeManager:
         self._last_written = text
         _LOGGER.debug("Wrote %d theme profile(s) to %s", len(profiles), self._path)
         await self._reload_frontend()
+        await self._push_view_assist(profiles)
 
     def _write(self, text: str) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
@@ -129,3 +131,51 @@ class ThemeManager:
             )
         except Exception:  # noqa: BLE001 - frontend may not be ready at startup
             _LOGGER.debug("Could not reload themes yet", exc_info=True)
+
+    async def _push_view_assist(self, profiles: dict[str, dict]) -> None:
+        """Push each profile's palette onto any View Assist targets it names.
+
+        `view_assist.set_state` merges arbitrary keyword attributes into the
+        target sensor's `extra_data`, which is already part of its
+        `extra_state_attributes` - so a dashboard can read these straight off
+        its own View Assist entity instead of cross-referencing a separate
+        ChromHA sensor. Entirely opt-in: a profile with no targets configured
+        triggers no service call at all.
+        """
+        for theme_name, options in profiles.items():
+            targets = options.get(CONF_VIEW_ASSIST_TARGETS) or []
+            if not targets:
+                continue
+
+            mode = options.get(CONF_MODE, DEFAULTS[CONF_MODE])
+            if mode == MODE_LIGHT:
+                dark = False
+            elif mode == MODE_DARK:
+                dark = True
+            elif mode == MODE_SUN:
+                dark = bool(options.get("is_night"))
+            else:  # Auto - no client to ask here, so default to dark.
+                dark = True
+
+            pal = build_palette(
+                options["resolved_accent"],
+                dark=dark,
+                contrast_boost=options.get(CONF_CONTRAST, DEFAULTS[CONF_CONTRAST]),
+            )
+
+            attrs = {f"chromha_{key}": value for key, value in pal.as_dict().items()}
+            attrs["chromha_theme_name"] = theme_name
+            attrs["chromha_transparent_url"] = TRANSPARENT_URL
+
+            try:
+                await self.hass.services.async_call(
+                    "view_assist",
+                    "set_state",
+                    {"entity_id": targets, **attrs},
+                    blocking=True,
+                )
+            except Exception:  # noqa: BLE001 - view_assist may not be installed
+                _LOGGER.debug(
+                    "Could not push palette to View Assist targets %s", targets,
+                    exc_info=True,
+                )

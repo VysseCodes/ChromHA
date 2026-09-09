@@ -7,7 +7,6 @@
         "data": {
           "profile_name": "Profile name",
           "accent": "Accent colour",
-          "accent_hex": "Custom accent (hex)",
           "style": "Style",
           "mode": "Mode"
         }
@@ -16,6 +15,23 @@
     "error": {
       "name_required": "Give the profile a name.",
       "name_exists": "A profile with that name already exists.",
+      "invalid_colour": "Enter a colour like #aa3151."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "ChromHA profile",
+        "description": "The whole palette is derived from this one colour.",
+        "data": {
+          "accent": "Accent colour",
+          "style": "Style",
+          "mode": "Mode",
+          "view_assist_targets": "Push to View Assist (optional)"
+        }
+      }
+    },
+    "error": {
       "invalid_colour": "Enter a colour like #aa3151."
     }
   }

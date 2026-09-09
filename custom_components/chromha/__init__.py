@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
+from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -12,6 +14,8 @@ from homeassistant.core import Event, EventStateChangedData, HomeAssistant
 from homeassistant.helpers.event import async_track_state_change_event
 
 from .const import (
+    CARD_URL,
+    CONF_ACCENT,
     DOMAIN,
     ICON_DIR,
     ICON_URL_BASE,
@@ -19,6 +23,7 @@ from .const import (
     STATIC_URL_BASE,
     SUN_ENTITY,
 )
+from .const import DEFAULT_ACCENT, LEGACY_ACCENT_PRESETS
 from .icon_view import ChromHAIconView
 from .theme_manager import ThemeManager
 
@@ -33,6 +38,18 @@ PLATFORMS: list[Platform] = [
 ]
 
 _ICONS_KEY = f"{DOMAIN}_icons_registered"
+
+
+def _version() -> str:
+    """Read the integration version, for cache-busting the card URL."""
+    try:
+        manifest = Path(__file__).parent / "manifest.json"
+        return json.loads(manifest.read_text()).get("version", "")
+    except (OSError, ValueError):
+        # Cache busting is not worth failing setup over.
+        return ""
+
+
 _SUN_KEY = f"{DOMAIN}_sun_listener"
 
 
@@ -61,6 +78,12 @@ async def _async_register_icons(hass: HomeAssistant) -> None:
         _LOGGER.warning("Bundled static assets missing at %s", static_path)
 
     await hass.http.async_register_static_paths(paths)
+
+    # Load the card as an extra frontend module rather than making the user
+    # add a Lovelace resource by hand. The version query string means a HACS
+    # update is picked up without a hard refresh.
+    version = _version()
+    add_extra_js_url(hass, f"{CARD_URL}?v={version}" if version else CARD_URL)
     # Sun-aware endpoint. Registered on a separate prefix so the static route
     # above cannot shadow it.
     hass.http.register_view(ChromHAIconView(hass))
@@ -92,6 +115,42 @@ def _async_track_sun(hass: HomeAssistant, manager: ThemeManager) -> None:
     hass.data[_SUN_KEY] = async_track_state_change_event(
         hass, [SUN_ENTITY], _sun_changed
     )
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate v1 entries to v2.
+
+    Before 0.3.0 the accent was a preset name plus a separate `accent_hex`
+    used only when the name was "Custom". Both collapse into a single hex
+    string under `accent`.
+    """
+    if entry.version >= 2:
+        return True
+
+    data = {**entry.data}
+    options = {**entry.options}
+
+    def _resolve(source: dict) -> str | None:
+        name = source.get("accent")
+        if isinstance(name, str) and name.startswith("#"):
+            return name  # already migrated
+        if name == "Custom":
+            return source.get("accent_hex") or DEFAULT_ACCENT
+        if name in LEGACY_ACCENT_PRESETS:
+            return LEGACY_ACCENT_PRESETS[name]
+        return None
+
+    for source in (options, data):
+        resolved = _resolve(source)
+        if resolved:
+            source[CONF_ACCENT] = resolved
+        source.pop("accent_hex", None)
+
+    hass.config_entries.async_update_entry(
+        entry, data=data, options=options, version=2
+    )
+    _LOGGER.debug("Migrated %s to version 2", entry.title)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
