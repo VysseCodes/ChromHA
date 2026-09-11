@@ -191,13 +191,26 @@ def _read_view_files(hass: HomeAssistant) -> list[tuple[str, str]]:
 
 def _title_for(name: str, parsed: Any, wrapped_title: str | None = None) -> str:
     """Prefer a declared title - the wrapped file's own, then the card's
-    own custom_fields.title if it is a plain string - falling back to the
-    file's slug."""
-    if isinstance(wrapped_title, str) and wrapped_title.strip():
+    own custom_fields.title if it is a plain static string - falling back
+    to the file's slug.
+
+    A Lovelace view's own `title:` is never template-evaluated - only a
+    button-card's own config is - so a `[[[ ... ]]]` value here would render
+    as that literal, garbled text in the tab bar rather than anything
+    useful. Hard-coding a static title instead is a ChromHA-dashboard-only
+    choice: it does not touch the source view file, and View Assist's own
+    dashboard resolves these dynamically some other way this clone does not
+    need to replicate.
+    """
+
+    def is_static(value: Any) -> bool:
+        return isinstance(value, str) and bool(value.strip()) and "[[[" not in value
+
+    if is_static(wrapped_title):
         return wrapped_title.strip()
     if isinstance(parsed, dict):
         title = parsed.get("custom_fields", {}).get("title")
-        if isinstance(title, str) and title.strip():
+        if is_static(title):
             return title.strip()
     return name.replace("_", " ").replace("-", " ").title()
 

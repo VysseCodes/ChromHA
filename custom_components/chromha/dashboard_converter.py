@@ -32,6 +32,12 @@ PAGE_BG = "var(--lovelace-background, var(--primary-background-color, black))"
 # structure has already stripped whatever quoting the source YAML used.
 CARD_BACKGROUNDS = {"#24292c", "#1c1c1c", "#000000", "#00000", "black"}
 
+# The Alert view's own deliberate blue - kept there, but a card_mod CSS
+# string is free-text CSS button-card's own styles: block cannot reach, so
+# a view that reuses this exact colour outside the Alert view (the stock
+# Weather view's card_mod does) needs a separate pass to catch it.
+ALERT_BLUE = ("#059bf1", "#059bf9")
+
 
 # --- Dashboard templates (dict-based) --------------------------------------
 
@@ -162,6 +168,20 @@ class Converter:
             "list view todo colour",
         )
 
+    def alert_blue_elsewhere(self) -> None:
+        """The Alert view's blue is deliberate and already skipped in
+        `card_backgrounds()` via `is_alert`. Anywhere else that reuses the
+        exact same colour - typically a card_mod CSS string reaching into a
+        third-party card button-card's own `styles:` block cannot touch,
+        such as the stock Weather view's `ha-card { background: #059bf9 }` -
+        is not the Alert view and should not stay blue.
+        """
+        if self.is_alert:
+            self.skipped.append("view's own blue (deliberate)")
+            return
+        for hexcode in ALERT_BLUE:
+            self._sub(re.escape(hexcode), BG, f"alert-blue literal ({hexcode})")
+
     def prune_empty(self) -> None:
         """Drop mapping keys left with no children - see convert.py's
         docstring for the block-scalar corruption this guards against."""
@@ -190,5 +210,6 @@ class Converter:
         self.card_backgrounds()
         self.background_images()
         self.literal_whites()
+        self.alert_blue_elsewhere()
         self.prune_empty()
         return self.text

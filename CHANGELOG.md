@@ -44,6 +44,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   and unwrapped automatically now, with a warning logged pointing at which
   file is still in the wrong shape on disk.
 
+- **Dynamic view titles rendered as literal garbage.** A Lovelace view's own
+  `title:` is never template-evaluated - only a button-card's own config is
+  - so a view whose title was a `[[[ ... ]]]` expression (View Assist's
+  stock `locate` and `music` views both do this) showed that literal text in
+  the tab bar instead of anything useful. The generated dashboard now
+  rejects a templated title and falls back to a plain name derived from the
+  view's own filename - a ChromHA-dashboard-only substitution; the source
+  view file is untouched.
+
+- **Weather's background was still blue after conversion.** Not a simple
+  `background-color:` line - View Assist's stock Weather view sets it via
+  `card_mod` CSS text (`ha-card { background: #059bf9 }`), which the colour
+  patcher's structural patterns never looked inside. That exact colour is
+  the Alert view's own deliberate blue, reused here seemingly by copy-paste;
+  now patched to the theme background everywhere except the Alert view
+  itself, in both `dashboard_converter.py` and `examples/view-assist/convert.py`.
+
 ## [0.4.1] - 2026-09-11
 
 ### Fixed

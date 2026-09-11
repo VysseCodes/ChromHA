@@ -31,6 +31,8 @@ What it changes
   * hardcoded background images in info / infopic / list -> removed
   * url(undefined) in calendar / camera -> removed
   * card_mod literal colours    -> CSS variables
+  * the Alert view's blue reused elsewhere (e.g. Weather's card_mod
+    background) -> theme background; the Alert view's own copy is untouched
 
 What it leaves alone
 --------------------
@@ -63,7 +65,7 @@ CARD_BACKGROUNDS = [
     "black",      # locate
 ]
 
-ALERT_BLUE = ["'#059bf1'", "#059bf1", "#059bf9"]
+ALERT_BLUE = ("#059bf1", "#059bf9")
 
 # A bare mapping key: an identifier, then a colon, and nothing else.
 # Deliberately strict, so nothing inside a block scalar can match.
@@ -207,6 +209,20 @@ class Converter:
             "list view todo colour",
         )
 
+    def alert_blue_elsewhere(self) -> None:
+        """The Alert view's blue is deliberate and already skipped in
+        `card_backgrounds()` via `is_alert`. Anywhere else that reuses the
+        exact same colour - typically a card_mod CSS string reaching into a
+        third-party card button-card's own `styles:` block cannot touch,
+        such as the stock Weather view's `ha-card { background: #059bf9 }` -
+        is not the Alert view and should not stay blue.
+        """
+        if self.is_alert:
+            self.skipped.append("view's own blue (deliberate)")
+            return
+        for hexcode in ALERT_BLUE:
+            self._sub(re.escape(hexcode), BG, f"alert-blue literal ({hexcode})")
+
     # --- shared -----------------------------------------------------------
 
     def prune_empty(self) -> None:
@@ -253,6 +269,7 @@ class Converter:
             self.card_backgrounds()
             self.background_images()
             self.literal_whites()
+            self.alert_blue_elsewhere()
         self.prune_empty()
         return self.text
 
