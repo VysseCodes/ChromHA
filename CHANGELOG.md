@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Weather view icons were cut off.** The stock Weather view's message area
+  had two invalid CSS declarations - `height: 100vdh` (not a real unit) and
+  `padding: -10%` (negative padding is invalid) - both silently dropped by
+  the browser, leaving the area to size around whatever content fit instead
+  of filling its grid row. That is what clipped the weather-forecast card's
+  large icons (present on the real View Assist dashboard too). Corrected to
+  `height: 100%` and `padding: 0` on the generated dashboard only.
+
+
 - **A leftover `chromhasettings.yaml` example view cloned in as a second,
   broken "Theme" tab.** Before the automatic dashboard existed,
   `examples/view-assist/README.md` told people to copy
