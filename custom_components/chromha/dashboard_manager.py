@@ -189,13 +189,56 @@ def _read_view_files(hass: HomeAssistant) -> list[tuple[str, str]]:
     return out
 
 
-def _title_for(name: str, parsed: Any) -> str:
-    """Prefer the view's own declared title, falling back to its slug."""
+def _title_for(name: str, parsed: Any, wrapped_title: str | None = None) -> str:
+    """Prefer a declared title - the wrapped file's own, then the card's
+    own custom_fields.title if it is a plain string - falling back to the
+    file's slug."""
+    if isinstance(wrapped_title, str) and wrapped_title.strip():
+        return wrapped_title.strip()
     if isinstance(parsed, dict):
         title = parsed.get("custom_fields", {}).get("title")
         if isinstance(title, str) and title.strip():
             return title.strip()
     return name.replace("_", " ").replace("-", " ").title()
+
+
+def _unwrap_if_wrapped(parsed: Any, name: str) -> tuple[Any, str | None]:
+    """Recover a bare button-card from a file mistakenly saved in the
+    dashboard-wrapped shape (`views: / - type: panel / cards: [...]`).
+
+    View Assist's views directory always expects a bare card - a file ends
+    up wrapped only if it was copied from a dashboard's raw config instead
+    of View Assist's own views directory. (ChromHA's own example views
+    shipped this way before 0.4.0; anyone who copied them before that fix
+    still has the old shape on disk.) Recovered here so a stale file
+    produces a working card instead of a card with no `type` at all, but a
+    warning is logged either way, since the file on disk should still be
+    corrected.
+
+    Returns `(card, wrapped_title)` - `wrapped_title` is the outer view's
+    own title, when one was found, since it is usually more meaningful than
+    anything on the inner card.
+    """
+    if not isinstance(parsed, dict) or "type" in parsed:
+        return parsed, None
+
+    views = parsed.get("views")
+    if isinstance(views, list) and views and isinstance(views[0], dict):
+        outer = views[0]
+        cards = outer.get("cards")
+        if isinstance(cards, list) and cards and isinstance(cards[0], dict):
+            _LOGGER.warning(
+                "View Assist view %r is wrapped in views:/cards: instead of "
+                "being a bare button-card - recovered automatically, but "
+                "the file itself should be fixed (re-copy it from its "
+                "source in the bare shape View Assist's views directory "
+                "expects).",
+                name,
+            )
+            title = outer.get("title")
+            return cards[0], title if isinstance(title, str) else None
+
+    return parsed, None
 
 
 async def _view_assist_views(hass: HomeAssistant) -> list[dict]:
@@ -217,10 +260,18 @@ async def _view_assist_views(hass: HomeAssistant) -> list[dict]:
             continue
         if not isinstance(parsed, dict):
             continue
+
+        parsed, wrapped_title = _unwrap_if_wrapped(parsed, name)
+        if not isinstance(parsed, dict) or "type" not in parsed:
+            _LOGGER.warning(
+                "Skipping View Assist view %r: not a usable button-card", name
+            )
+            continue
+
         views.append(
             {
                 "type": "panel",
-                "title": _title_for(name, parsed),
+                "title": _title_for(name, parsed, wrapped_title),
                 "path": name,
                 "cards": [parsed],
             }

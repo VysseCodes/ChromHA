@@ -36,6 +36,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   sending only the latest value - which makes that reordering impossible
   rather than just unlikely.
 
+- **A stale, wrapped View Assist view file produced an invalid card.** If a
+  file under `/config/view_assist/views/` was copied in the wrapped
+  `views:`/`cards:` shape instead of a bare button-card - as ChromHA's own
+  example views did before 0.4.0 - the dashboard clone wrapped it a second
+  time, producing a card with no `type` (a broken card in the UI). Detected
+  and unwrapped automatically now, with a warning logged pointing at which
+  file is still in the wrong shape on disk.
+
 ## [0.4.1] - 2026-09-11
 
 ### Fixed
