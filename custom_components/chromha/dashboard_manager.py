@@ -48,6 +48,16 @@ DASHBOARD_ICON = "mdi:palette"
 VIEW_ASSIST_DASHBOARD_URL_PATH = "view-assist"
 VIEW_ASSIST_VIEWS_DIR = ("view_assist", "views")
 
+# Before this dashboard existed, examples/view-assist/README.md told people
+# to copy these three ChromHA-authored example views into their View Assist
+# views directory by hand. They are superseded now - this dashboard clones
+# the *real* clock/controls views and adds its own Theme view - so a leftover
+# copy is skipped rather than cloned. Without this, chromhasettings.yaml in
+# particular clones in as a second, confusingly-named "Theme" tab whose
+# hardcoded example profile (`chromha_ryan`) does not match anyone's real
+# profile name.
+_LEGACY_EXAMPLE_VIEWS = frozenset({"chromhaclock", "chromhacontrols", "chromhasettings"})
+
 _CONF_ICON = "icon"
 _CONF_TITLE = "title"
 _CONF_URL_PATH = "url_path"
@@ -178,6 +188,15 @@ def _read_view_files(hass: HomeAssistant) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     for entry in sorted(root.iterdir()):
         if not entry.is_dir():
+            continue
+        if entry.name in _LEGACY_EXAMPLE_VIEWS:
+            _LOGGER.warning(
+                "Skipping %r: a leftover ChromHA example view, superseded by "
+                "this dashboard. Safe to delete "
+                "/config/view_assist/views/%s/ entirely.",
+                entry.name,
+                entry.name,
+            )
             continue
         path = entry / f"{entry.name}.yaml"
         if not path.is_file():

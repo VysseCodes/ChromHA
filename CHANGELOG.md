@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A leftover `chromhasettings.yaml` example view cloned in as a second,
+  broken "Theme" tab.** Before the automatic dashboard existed,
+  `examples/view-assist/README.md` told people to copy
+  `chromhaclock`/`chromhacontrols`/`chromhasettings` into
+  `/config/view_assist/views/` by hand. Anyone who did still has them there,
+  and the dashboard clone had no way to know they were obsolete - so
+  `chromhasettings.yaml`'s hardcoded example profile (`chromha_ryan`) cloned
+  in as a tab confusingly also titled "Theme", pointing the ChromHA card at
+  an accent entity that only exists if your profile happens to be named
+  "ryan". These three legacy views are now skipped during cloning (with a
+  warning naming the file to delete), and the README no longer recommends
+  installing them.
+
 ### Changed
 
 - **The ChromHA View Assist dashboard is now a clone of your actual View

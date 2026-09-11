@@ -1,13 +1,27 @@
 # ChromHA + View Assist
 
-Three views written for ChromHA, and a script that converts View Assist's own
-views to follow the theme.
+**Most people want [the automatic dashboard](../../README.md#reaching-view-assist-and-music-assistant)
+instead of anything in this folder.** ChromHA creates its own "ChromHA View
+Assist" dashboard - Settings > Dashboards - that clones your real View Assist
+dashboard and views with the same colour patches `convert.py` applies below,
+automatically, with no manual copying or editing. This folder is for editing
+View Assist's *own* dashboard directly instead - useful if you'd rather keep
+using View Assist's dashboard unmodified and don't want a second one.
+
+**If you previously copied `chromhaclock`, `chromhacontrols`, or
+`chromhasettings` into `/config/view_assist/views/`: delete them.** They
+predate the automatic dashboard, which now covers what they did (a themed
+clock/controls and a Theme settings view) - the automatic dashboard skips
+them if it finds them, but leaving them in your actual View Assist views
+directory just adds confusing, unmaintained duplicate views there.
+
+A script that converts View Assist's own views to follow the theme.
 
 ```
 view-assist/
 ├── convert.py                  converts your View Assist files
 ├── dashboard-edits.md          the same dashboard edits, by hand
-└── views/
+└── views/                      deprecated - see the notice above
     ├── chromhaclock/           clock with ChromHA weather icons
     ├── chromhacontrols/        brightness, volume, VA modes
     └── chromhasettings/        theme controls on the tablet
@@ -37,9 +51,10 @@ calls `view_assist.set_state` on those devices, which lands
 `chromha_accent`, `chromha_background`, `chromha_surface`, `chromha_text`,
 `chromha_theme_name` and `chromha_transparent_url` on the device's own View
 Assist sensor - readable as `state_attr('sensor.<device>_view_assist',
-'chromha_accent')`, with no separate ChromHA sensor to name. The views below
-still work either way; this just gives you a second way to read the same
-data without the `var_profile` cross-reference in `chromhasettings.yaml`.
+'chromha_accent')`, with no separate ChromHA sensor to name. Useful if you
+are editing View Assist's own dashboard by hand (below) and would rather
+read ChromHA's colours from a plain state attribute than hardcode a profile
+slug into a view.
 
 ## 1. Themes are CSS variables
 
@@ -154,35 +169,18 @@ clear list rather than a silent partial conversion.
 - **`rgba()` shader overlays.** Different job.
 - Anything it does not recognise.
 
-## 4. Add the ChromHA views
+## 4. Add the ChromHA views (deprecated)
 
-Copy the folders from `views/` into `/config/view_assist/views/`, then load
-each:
-
-```yaml
-action: view_assist.load_view
-data:
-  name: chromhaclock
-```
-
-Each file has an edit marked at the top:
-
-| View | Edit |
-|---|---|
-| `chromhaclock` | none |
-| `chromhasettings` | `var_profile` - the slug in your ChromHA entity ids |
-| `chromhacontrols` | `var_brightness_entity`, `var_screen_entity` |
-
-In `chromhacontrols`, rows are built in JavaScript rather than listed, so an
-entity left blank disappears instead of showing as unavailable.
-
-Point the satellite's **Home screen** at `/view-assist/chromhaclock`, and add
-the other two to `status_icons` or `menu_items`:
-
-```yaml
-view:chromhacontrols|tune
-view:chromhasettings|palette
-```
+`views/chromhaclock`, `views/chromhacontrols`, and `views/chromhasettings`
+are kept for reference, but **do not copy them into
+`/config/view_assist/views/` any more** - the automatic dashboard (see the
+notice at the top of this file) already gives you a themed clock, controls,
+and a Theme settings view, generated from your real profiles instead of a
+hardcoded example `var_profile`. If you already have any of these three
+installed, delete them - the automatic dashboard skips them if it finds them
+rather than cloning them in, but leaving them installed in your actual View
+Assist views directory serves no purpose and can produce a confusing
+duplicate "Theme" tab with a profile slug that does not match yours.
 
 ## Credits
 
