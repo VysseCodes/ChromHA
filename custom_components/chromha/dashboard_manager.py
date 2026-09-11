@@ -21,6 +21,7 @@ Settings > Dashboards and restart Home Assistant.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -54,7 +55,15 @@ _CONF_REQUIRE_ADMIN = "require_admin"
 
 class _FakeConnection:
     """Satisfies just enough of the websocket connection interface to call a
-    registered command handler directly, with no real websocket involved."""
+    registered command handler directly, with no real websocket involved.
+
+    Command handlers decorated with `@websocket_api.async_response` are
+    wrapped into a *sync* function that schedules the real work as a
+    background task and returns immediately - calling that wrapper is not
+    enough on its own. `send_result`/`send_error` are only called once that
+    background task actually finishes, so this waits on an event they set,
+    rather than trusting the handler call itself to have completed anything.
+    """
 
     @dataclass
     class _AdminUser:
@@ -63,17 +72,21 @@ class _FakeConnection:
     def __init__(self) -> None:
         self.user = self._AdminUser()
         self.failed = False
+        self.done = asyncio.Event()
 
     def send_result(self, msg_id: int, item: Any = None) -> None:
         self.failed = False
+        self.done.set()
 
     def send_error(self, msg_id: int, code: str, message: str) -> None:
         self.failed = True
         _LOGGER.debug("Dashboard creation failed: %s %s", code, message)
+        self.done.set()
 
 
-def _call_ws_command(hass: HomeAssistant, command: str, msg: dict) -> bool:
-    """Invoke a registered websocket command handler directly."""
+async def _call_ws_command(hass: HomeAssistant, command: str, msg: dict) -> bool:
+    """Invoke a registered websocket command handler directly, and actually
+    wait for it to finish before reporting success."""
     registered = hass.data.get("websocket_api", {}).get(command)
     if not registered:
         return False
@@ -81,6 +94,7 @@ def _call_ws_command(hass: HomeAssistant, command: str, msg: dict) -> bool:
     connection = _FakeConnection()
     try:
         handler(hass, connection, msg if schema is False else schema(msg))
+        await asyncio.wait_for(connection.done.wait(), timeout=10)
     except Exception:  # noqa: BLE001 - best effort, logged below
         _LOGGER.debug("Error calling websocket command %s", command, exc_info=True)
         return False
@@ -413,7 +427,7 @@ async def async_ensure_dashboard(hass: HomeAssistant) -> None:
         if DASHBOARD_URL_PATH in lovelace.dashboards:
             return
 
-        created = _call_ws_command(
+        created = await _call_ws_command(
             hass,
             "lovelace/dashboards/create",
             {

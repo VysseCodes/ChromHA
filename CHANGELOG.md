@@ -5,6 +5,23 @@ All notable changes to ChromHA are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] - 2026-09-11
+
+### Fixed
+
+- **The ChromHA View Assist dashboard came out blank.** Home Assistant wraps
+  the `lovelace/dashboards/create` command handler into a fire-and-forget
+  background task, so calling it and immediately checking the result (as
+  `dashboard_manager.py` did) always reported success before the dashboard
+  was actually created - a plain missing `await` compounded it, since the
+  call was async but never awaited at its call site either. `_call_ws_command`
+  now waits on an event the handler's own completion sets, instead of racing
+  ahead of it.
+
+  Since ChromHA never rewrites the dashboard once it exists (see its module
+  docstring), this only fixes *new* creations - an already-blank dashboard
+  needs deleting under Settings > Dashboards so it gets rebuilt correctly.
+
 ## [0.4.0] - 2026-09-11
 
 ### Fixed
@@ -239,6 +256,7 @@ First public release.
   so some newer components fall back to Home Assistant defaults.
 - `exceptional` maps to `severe-thunderstorm`, which is approximate.
 
+[0.4.1]: https://github.com/vyssecodes/chromha/releases/tag/v0.4.1
 [0.4.0]: https://github.com/vyssecodes/chromha/releases/tag/v0.4.0
 [0.3.0]: https://github.com/vyssecodes/chromha/releases/tag/v0.3.0
 [0.2.1]: https://github.com/vyssecodes/chromha/releases/tag/v0.2.1
