@@ -5,6 +5,37 @@ All notable changes to ChromHA are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.2] - 2026-09-11
+
+### Changed
+
+- **The ChromHA View Assist dashboard is now a clone of your actual View
+  Assist dashboard, not a hand-built substitute.** 0.4.0/0.4.1 generated
+  original Home/Weather/Controls views from scratch, gated behind a **Push
+  to View Assist** target per profile - a mismatch with what people actually
+  wanted, which was their real View Assist dashboard with ChromHA's colours.
+
+  It now reads every view file under `/config/view_assist/views/` plus the
+  dashboard's shared `button_card_templates`, and colour-patches both with
+  the same substitutions `examples/view-assist/convert.py` already applies
+  to a user's own copy - just automatic, and into a separate dashboard
+  instead of View Assist's own. A **Theme** view (colour wheel + Solid/Glass
+  per profile) is appended. The dashboard is now rewritten on every rebuild
+  (previously created once and left alone) so it tracks your real View
+  Assist setup as it changes - the same "generated, don't hand-edit"
+  contract the theme file already has. New module: `dashboard_converter.py`.
+
+### Fixed
+
+- **The colour picker didn't always stick.** `chromha-card.js` fired an
+  unserialised `text.set_value` call on every colour change. Two picks made
+  in quick succession (a very ordinary way to use a colour wheel) raced:
+  nothing guaranteed the *first* call's write couldn't land *after* the
+  second's, silently reverting to an earlier colour depending on timing.
+  Commits are now serialised - never more than one write in flight, always
+  sending only the latest value - which makes that reordering impossible
+  rather than just unlikely.
+
 ## [0.4.1] - 2026-09-11
 
 ### Fixed
@@ -256,6 +287,7 @@ First public release.
   so some newer components fall back to Home Assistant defaults.
 - `exceptional` maps to `severe-thunderstorm`, which is approximate.
 
+[0.4.2]: https://github.com/vyssecodes/chromha/releases/tag/v0.4.2
 [0.4.1]: https://github.com/vyssecodes/chromha/releases/tag/v0.4.1
 [0.4.0]: https://github.com/vyssecodes/chromha/releases/tag/v0.4.0
 [0.3.0]: https://github.com/vyssecodes/chromha/releases/tag/v0.3.0

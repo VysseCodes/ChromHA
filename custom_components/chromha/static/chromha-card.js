@@ -52,15 +52,45 @@ class ChromHACard extends HTMLElement {
     return this._hass.states[`sensor.${stem}_palette`];
   }
 
+  /**
+   * Send the accent value to Home Assistant.
+   *
+   * Picking twice in quick succession (drag, release, drag again) fires two
+   * overlapping calls with nothing awaiting the first before the second
+   * starts. Home Assistant's own service dispatch has async steps between
+   * "call received" and "entity method runs", so nothing guarantees the
+   * calls land in the order they were sent - an earlier pick can finish
+   * after a later one and silently overwrite it. Serialising here (never
+   * more than one call in flight, always sending only the latest value)
+   * makes that impossible rather than just unlikely.
+   */
   async _commit(value) {
     if (!HEX.test(value)) return;
     // Optimistic, so dragging the picker does not snap back while Home
     // Assistant round-trips the state change.
     this._pending = value;
-    await this._hass.callService("text", "set_value", {
-      entity_id: this._entityId(),
-      value,
-    });
+    this._latestValue = value;
+    if (this._committing) return;
+    this._committing = true;
+    try {
+      while (this._latestValue !== undefined) {
+        const toSend = this._latestValue;
+        this._latestValue = undefined;
+        try {
+          await this._hass.callService("text", "set_value", {
+            entity_id: this._entityId(),
+            value: toSend,
+          });
+        } catch (err) {
+          // The optimistic value never actually saved - drop it instead of
+          // showing a colour that silently failed to persist.
+          if (this._pending === toSend) this._pending = null;
+          console.error("chromha-card: set_value failed", err);
+        }
+      }
+    } finally {
+      this._committing = false;
+    }
   }
 
   _render() {
