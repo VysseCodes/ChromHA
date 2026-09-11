@@ -5,7 +5,7 @@ All notable changes to ChromHA are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.4.2] - 2026-09-11
+## [Unreleased]
 
 ### Changed
 
@@ -287,7 +287,6 @@ First public release.
   so some newer components fall back to Home Assistant defaults.
 - `exceptional` maps to `severe-thunderstorm`, which is approximate.
 
-[0.4.2]: https://github.com/vyssecodes/chromha/releases/tag/v0.4.2
 [0.4.1]: https://github.com/vyssecodes/chromha/releases/tag/v0.4.1
 [0.4.0]: https://github.com/vyssecodes/chromha/releases/tag/v0.4.0
 [0.3.0]: https://github.com/vyssecodes/chromha/releases/tag/v0.3.0
