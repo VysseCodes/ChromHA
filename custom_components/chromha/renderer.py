@@ -132,7 +132,9 @@ def render_variant(options: dict, *, dark: bool) -> list[str]:
         f'secondary-text-color: "{pal.text_muted}"',
         "text-primary-color: var(--primary-text-color)",
         "disabled-text-color: var(--disabled-color)",
-        "text-on-state-color: var(--ha-card-background)",
+        # Text drawn on top of a coloured state badge/pill, not on the card
+        # itself - it still needs to be a *text* colour, not the background.
+        "text-on-state-color: var(--primary-text-color)",
         f'link-text-color: "{pal.icon_active}"',
         "",
         "# Surfaces",

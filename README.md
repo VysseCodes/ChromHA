@@ -104,15 +104,23 @@ inheritance.
 Neither has a theming API to register with, so ChromHA reaches them two
 different ways:
 
-- **View Assist**: on every rebuild, ChromHA can call `view_assist.set_state`
-  on any View Assist device(s) you pick in a profile's options (**Push to
-  View Assist**, optional and off by default). That service merges arbitrary
-  attributes into the target's own sensor, so a View Assist dashboard reads
-  `chromha_accent`, `chromha_background`, `chromha_surface`, `chromha_text`,
-  `chromha_theme_name` and friends straight off its own entity - no separate
-  ChromHA sensor to name. See [examples/view-assist](examples/view-assist)
-  for ready-made views and the dashboard edits View Assist itself still
-  needs.
+- **View Assist**: ChromHA creates its own dashboard the first time it loads
+  - **Settings > Dashboards > ChromHA View Assist** - with a shared Theme
+    view (colour wheel + Solid/Glass per profile) and, for any profile with a
+    **Push to View Assist** target configured, a Home/Weather/Controls view
+    trio wired to that satellite. It is a separate dashboard on purpose:
+    editing View Assist's *own* dashboard makes it differ from upstream,
+    which is what causes View Assist to prompt for an update on every card
+    it ships. Created once, then never rewritten - customise it by hand
+    afterward like any other dashboard.
+
+  ChromHA can also call `view_assist.set_state` on those same targets on
+  every rebuild, landing `chromha_accent`, `chromha_background`,
+  `chromha_surface`, `chromha_text`, `chromha_theme_name` and friends
+  directly on the target's own sensor - useful if you'd rather keep using
+  View Assist's own dashboard and read ChromHA's colours from it. See
+  [examples/view-assist](examples/view-assist) for that path, including the
+  dashboard edits View Assist itself still needs.
 - **Music Assistant**: it has no public API to push a theme into, so this
   stays pull-based. Point any Music Assistant-adjacent automation, script, or
   custom card at `sensor.*_palette`'s attributes, the same way a Jinja

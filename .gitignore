@@ -1,3 +1,10 @@
 __pycache__/
 *.py[cod]
 .venv/
+
+# Maintainer/AI-assistant working notes - not shipped by HACS (only
+# custom_components/chromha/ is), and not meant for the public repo. Kept
+# locally; untracked as of 0.4.0.
+CLAUDE.md
+STATUS.md
+RELEASE.md

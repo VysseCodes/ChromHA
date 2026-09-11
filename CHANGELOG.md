@@ -5,6 +5,44 @@ All notable changes to ChromHA are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-09-11
+
+### Fixed
+
+- **White text on a white background.** `text-on-state-color` - a text
+  colour, meant for text drawn on a coloured state badge/pill - was set to
+  `var(--ha-card-background)`. In Light mode that background is white (or
+  near-white), so anything using this token rendered as invisible white text
+  on the page's own light surfaces.
+
+### Added
+
+- **The ChromHA View Assist dashboard.** A storage-mode dashboard ChromHA
+  creates for itself the first time it loads (`Settings > Dashboards >
+  ChromHA View Assist`), separate from View Assist's own dashboard - so
+  ChromHA no longer needs to touch View Assist's tracked views or
+  `button_card_templates`, which was causing View Assist to prompt for an
+  update on every one of its cards.
+
+  One shared **Theme** view lists every ChromHA profile's colour wheel and a
+  Solid/Glass toggle. For each profile with a **Push to View Assist** target
+  configured, it also adds a Home, Weather, and Controls view wired to that
+  profile's satellite. The Weather view is an original, theme-coloured
+  replacement for the stock weather card's fixed background - deliberately
+  current-conditions only, no forecast row.
+
+  Created once and never rewritten afterward: after the first creation it is
+  an ordinary dashboard, safe to customise by hand. To regenerate it from
+  scratch (e.g. after adding more profiles), delete it under Settings >
+  Dashboards and restart Home Assistant. Requires the `lovelace` component,
+  now a manifest dependency.
+
+  This relies on Home Assistant's internal dashboard-storage mechanism
+  (there is no public API for a custom integration to register a storage
+  dashboard) - the same approach View Assist itself uses for its own
+  dashboard, independently implemented here. Not exercised against a real
+  Home Assistant instance yet.
+
 ## [0.3.0] - 2026-08-29
 
 ### Changed
@@ -201,6 +239,7 @@ First public release.
   so some newer components fall back to Home Assistant defaults.
 - `exceptional` maps to `severe-thunderstorm`, which is approximate.
 
+[0.4.0]: https://github.com/vyssecodes/chromha/releases/tag/v0.4.0
 [0.3.0]: https://github.com/vyssecodes/chromha/releases/tag/v0.3.0
 [0.2.1]: https://github.com/vyssecodes/chromha/releases/tag/v0.2.1
 [0.2.0]: https://github.com/vyssecodes/chromha/releases/tag/v0.2.0

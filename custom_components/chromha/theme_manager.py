@@ -26,6 +26,7 @@ from .const import (
     THEME_FILE,
     TRANSPARENT_URL,
 )
+from .dashboard_manager import async_ensure_dashboard
 from .palette import build_palette, hex_to_rgb, rgb_to_hex
 from .renderer import render_file
 
@@ -87,6 +88,10 @@ class ThemeManager:
 
     async def _rebuild(self) -> None:
         profiles = self.collect_profiles()
+
+        # Idempotent - only ever does anything the first time. See
+        # dashboard_manager's module docstring for why it stops there.
+        await async_ensure_dashboard(self.hass)
 
         if not profiles:
             await self.hass.async_add_executor_job(self._remove)
