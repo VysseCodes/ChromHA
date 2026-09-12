@@ -273,29 +273,6 @@ def _unwrap_if_wrapped(parsed: Any, name: str) -> tuple[Any, str | None]:
     return parsed, None
 
 
-def _fix_weather_layout(name: str, parsed: Any) -> None:
-    """The stock Weather view's outer wrapper carries two invalid CSS
-    declarations - `height: 100vdh` (not a real unit) and `padding: -10%`
-    (negative padding is invalid) - both silently dropped by the browser.
-    Without a real height, the message area sizes itself around whatever
-    content fits rather than filling its grid row, which is what clips the
-    weather-forecast card's large icons. Fixed in place on the parsed
-    structure; the source file is untouched.
-    """
-    if name != "weather" or not isinstance(parsed, dict):
-        return
-    fields = parsed.get("styles", {}).get("custom_fields", {}).get("message")
-    if not isinstance(fields, list):
-        return
-    for entry in fields:
-        if not isinstance(entry, dict):
-            continue
-        if entry.get("height") == "100vdh":
-            entry["height"] = "100%"
-        if entry.get("padding") == "-10%":
-            entry["padding"] = "0"
-
-
 async def _view_assist_views(hass: HomeAssistant) -> list[dict]:
     """Every View Assist view file, colour-patched and wrapped as a view.
 
@@ -322,8 +299,6 @@ async def _view_assist_views(hass: HomeAssistant) -> list[dict]:
                 "Skipping View Assist view %r: not a usable button-card", name
             )
             continue
-
-        _fix_weather_layout(name, parsed)
 
         views.append(
             {

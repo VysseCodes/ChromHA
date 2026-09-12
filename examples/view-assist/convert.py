@@ -209,6 +209,25 @@ class Converter:
             "list view todo colour",
         )
 
+    def js_hardcoded_white(self) -> None:
+        """A hardcoded `return "white"` inside a button-card JS template -
+        as the stock Clock view's `var_font_color`/`var_font_color_night`
+        do - never reaches a plain `- color: white` YAML line, so text or
+        icon colour driven by it never follows the theme. `red` and
+        `transparent` (the same views' night-mode indicators) are
+        deliberate and left alone - only the literal white return value is
+        replaced.
+        """
+        if self.is_alert:
+            self.skipped.append("view's own colours (deliberate)")
+            return
+        # \s+ rather than a literal space: a YAML folded block scalar (>-)
+        # wraps its source across physical lines, so "return" and the
+        # quoted value can have a newline (plus indentation) between them
+        # in the raw text even though YAML folds it back into one line.
+        self._sub(r'return\s+"white"', f'return "{TEXT}"', 'JS return "white"')
+        self._sub(r"return\s+'white'", f"return '{TEXT}'", "JS return 'white'")
+
     def alert_blue_elsewhere(self) -> None:
         """The Alert view's blue is deliberate and already skipped in
         `card_backgrounds()` via `is_alert`. Anywhere else that reuses the
@@ -269,6 +288,7 @@ class Converter:
             self.card_backgrounds()
             self.background_images()
             self.literal_whites()
+            self.js_hardcoded_white()
             self.alert_blue_elsewhere()
         self.prune_empty()
         return self.text

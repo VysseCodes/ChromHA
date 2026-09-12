@@ -9,13 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **Weather view icons were cut off.** The stock Weather view's message area
-  had two invalid CSS declarations - `height: 100vdh` (not a real unit) and
-  `padding: -10%` (negative padding is invalid) - both silently dropped by
-  the browser, leaving the area to size around whatever content fit instead
-  of filling its grid row. That is what clipped the weather-forecast card's
-  large icons (present on the real View Assist dashboard too). Corrected to
-  `height: 100%` and `padding: 0` on the generated dashboard only.
+- **Clock text and icon colour didn't follow the theme.** The stock Clock
+  view picks its font/icon colour via a button-card JS template
+  (`var_font_color`/`var_font_color_night`) that hardcodes a literal
+  `return "white"` - a colour hidden inside JS, not a plain YAML
+  `- color: white` line, so the existing colour patterns never saw it. Its
+  own `red`/`transparent` night-mode indicators are deliberate and left
+  alone; only the literal white return value is replaced. The same
+  `js_hardcoded_white()` pass applies to every view, not just Clock, and
+  was added to both `dashboard_converter.py` and
+  `examples/view-assist/convert.py`.
+
+### Reverted
+
+- The previous beta's Weather-view layout fix (`height: 100vdh` /
+  `padding: -10%` correction) made the clipped-icon problem worse rather
+  than better - blind CSS layout guesses without a way to see the actual
+  render aren't a good trade against a pre-existing, out-of-scope View
+  Assist bug. Reverted to leaving those two declarations exactly as
+  upstream ships them.
 
 
 - **A leftover `chromhasettings.yaml` example view cloned in as a second,
